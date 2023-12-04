@@ -1,0 +1,11 @@
+version: "2.3"
+services:
+  vpn:
+    image: poyaz/l2tp-ipsec:latest
+    network_mode: bridge
+    devices:
+      - /dev/net/tun:/dev/net/tun
+      - /dev/ppp:/dev/ppp
+    cap_add:
+      - NET_ADMIN
+    restart: "always"

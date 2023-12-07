@@ -61,8 +61,8 @@ function docker_setup_env() {
   file_env 'VPN_IPSEC_CUSTOM_CONFIG_PATH'
   file_env 'VPN_XL2TP_CUSTOM_CONFIG_PATH'
   file_env 'VPN_PPP_CUSTOM_CONFIG_PATH'
-  file_env 'DNS_IP_1'
-  file_env 'DNS_IP_2'
+  file_env 'DISABLE_ADD_ROUTE'
+  file_env 'DNS_IP_LIST'
 }
 
 check_require_variable_set() {
@@ -170,26 +170,25 @@ run() {
     exit 1
   fi
 
-  inter=$(ip route | grep "default via" | awk '{print $3}')
-  if [ "$inter" != "ppp0" ]; then
-    route add "$VPN_ADDR" gw "$(ip route | grep 'default via' | awk '{print $3}')"
+  if [ -z "$DISABLE_ADD_ROUTE" ]; then
+    inter=$(ip route | grep "default via" | awk '{print $3}')
+    if [ "$inter" != "ppp0" ]; then
+      route add "$VPN_ADDR" gw "$(ip route | grep 'default via' | awk '{print $3}')"
+    fi
+
+    route add default dev ppp0
   fi
 
-  route add default dev ppp0
-
-  if [ -n "$DNS_IP_1" ]; then
-    if ! grep -q "$DNS_IP_1" /etc/resolv.conf; then
-      tmp_file=$(mktemp /tmp/resolv.conf.XXXXXX)
-      (echo "nameserver $DNS_IP_1" && cat /etc/resolv.conf) > "$tmp_file" && cat "$tmp_file" > /etc/resolv.conf
-      rm -f "$tmp_file"
-    fi
-  fi
-  if [ -n "$DNS_IP_2" ]; then
-    if ! grep -q "$DNS_IP_2" /etc/resolv.conf; then
-      tmp_file=$(mktemp /tmp/resolv.conf.XXXXXX)
-      (echo "nameserver $DNS_IP_2" && cat /etc/resolv.conf) > "$tmp_file" && cat "$tmp_file" > /etc/resolv.conf
-      rm -f "$tmp_file"
-    fi
+  if [ -n "$DNS_IP_LIST" ]; then
+    while IFS=',' read -ra ADDRS; do
+      for dns in "${ADDRS[@]}"; do
+         if ! grep -q "$dns" /etc/resolv.conf; then
+            tmp_file=$(mktemp /tmp/resolv.conf.XXXXXX)
+            (echo "nameserver $dns" && cat /etc/resolv.conf) > "$tmp_file" && cat "$tmp_file" > /etc/resolv.conf
+            rm -f "$tmp_file"
+          fi
+      done
+    done <<< "$DNS_IP_LIST"
   fi
 
   echo "[INFO] Ready to use vpn"

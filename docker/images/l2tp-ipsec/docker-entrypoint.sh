@@ -181,7 +181,7 @@ run() {
 
   if [ -n "$DNS_IP_LIST" ]; then
     while IFS=',' read -ra ADDRS; do
-      for dns in "${ADDRS[@]}"; do
+      for dns in $(echo "${ADDRS[@]}" | rev); do
          if ! grep -q "$dns" /etc/resolv.conf; then
             tmp_file=$(mktemp /tmp/resolv.conf.XXXXXX)
             (echo "nameserver $dns" && cat /etc/resolv.conf) > "$tmp_file" && cat "$tmp_file" > /etc/resolv.conf
